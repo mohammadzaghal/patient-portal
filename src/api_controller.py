@@ -33,25 +33,51 @@ class PatientAPIController:
     """
 
     def create_patient(self):
-        pass
+         data = request.json
+        patient_id = self.patient_db.insert_patient(data)
+        if patient_id:
+            return jsonify({"patient_id": patient_id}), 200
+        else:
+            return jsonify({"error": "Failed to create patient"}), 400
 
     def get_patients(self):
-        pass
+        patients = self.patient_db.select_all_patients()
+        if patients:
+            return jsonify(patients), 200
+        else:
+            return jsonify({"error": "No patients found"}), 404
 
     def get_patient(self, patient_id):
-        pass
+        patient = self.patient_db.select_patient(patient_id)
+        if patient:
+            return jsonify(patient), 200
+        else:
+            return jsonify({"error": f"Patient with ID {patient_id} not found"}), 404
 
     def update_patient(self, patient_id):
-        pass
+         data = request.json
+        success = self.patient_db.update_patient(patient_id, data)
+        if success:
+            return jsonify({"message": "Patient updated successfully"}), 200
+        else:
+            return jsonify({"error": f"Failed to update patient with ID {patient_id}"}), 400
 
     def delete_patient(self, patient_id):
-        pass
+         success = self.patient_db.delete_patient(patient_id)
+        if success:
+            return jsonify({"message": "Patient deleted successfully"}), 200
+        else:
+            return jsonify({"error": f"Patient with ID {patient_id} not found"}), 404
+
 
     def run(self):
         """
         Runs the Flask application.
         """
-        self.app.run()
-
+        self.app.run(debug=True)
+          
+if __name__ == '__main__':
+    controller = PatientAPIController()
+    controller.run()
 
 PatientAPIController()
