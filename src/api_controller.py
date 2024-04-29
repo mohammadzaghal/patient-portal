@@ -32,66 +32,57 @@ class PatientAPIController:
     Status code should be 400 if there was a client error,
     """
 
-    def create_patient(self):
-        try:
-            request_data = request.get_json()
-            if not request_data:
-                return jsonify({"error": "Invalid request data"}), 400
-            patient_id = self.patient_db.insert_patient(request_data)
-            if patient_id:
-                return jsonify({"patient_id": patient_id[0]}), 200
-            else:
-                return jsonify({"error": "Failed to create patient"}), 400
-        except Exception as e:
-            return jsonify({"error": str(e)}), 400
-
+     def create_patient(self):
+        request_body = request.json
+        patient_id = self.patient_db.insert_patient(request_body)[0]
+        # print(patient_id)
+        if patient_id:
+            response_body = {"patient_id": patient_id}
+            
+            status_code = 200
+        else:
+            response_body = {"error""}
+            status_code = 400
+        return jsonify(response_body), status_code
+    
+    def get_patient(self, patient_id):
+        patient = self.patient_db.select_patient(patient_id)
+        if patient is not None:
+            return jsonify(patient), 200
+        else:
+            return jsonify({"error": f"Patient  {patient_id} not found"}), 400
 
     def get_patients(self):
-        try:
-            patients = self.patient_db.select_all_patients()
-            return jsonify(patients), 200
-        except Exception as e:
-            return jsonify({"error": str(e)}), 400
+        patients = self.patient_db.select_all_patients()
+        if patients is not None:
 
-
-    def get_patient(self, patient_id):
-        try:
-            patient = self.patient_db.select_patient(patient_id)
-            if patient:
-                return jsonify(patient), 200
-            else:
-                return jsonify({"error": "Patient not found"}), 400
-        except Exception as e:
-            return jsonify({"error": str(e)}), 400
+            patient_ids = [patient["patient_id"] for patient in patients]
+            return jsonify({"patient_ids": patient_ids}), 200
+        else:
+            return jsonify({"error"}), 400
+    def delete_patient(self, patient_id):
+        deleted_rows = self.patient_db.delete_patient(patient_id)
+        if deleted_rows is not None and deleted_rows > 0:
+            return jsonify({"message": "Patient deleted "}), 200
+        elif deleted_rows == 0:
+            return jsonify({"error": f"Patient {patient_id} not found"}), 400
+        else:
+            return jsonify({"error"}), 400
 
     def update_patient(self, patient_id):
-        try:
-            request_data = request.get_json()
-            if not request_data:
-                return jsonify({"error": "Invalid request data"}), 400
-            result = self.patient_db.update_patient(patient_id, request_data)
-            if result:
-                return jsonify({"message": "Patient updated successfully"}), 200
-            else:
-                return jsonify({"error": "Failed to update patient"}), 400
-        except Exception as e:
-            return jsonify({"error": str(e)}), 400
+        request_body = request.json
+        updated_rows = self.patient_db.update_patient(patient_id, request_body)
+        if updated_rows is not None and updated_rows > 0:
+            return jsonify({"message": "Patient updated "}), 200
+        elif updated_rows == 0:
+            return jsonify({"error": f"Patient {patient_id} not found"}), 400
+        else:
+            return jsonify({"error"}), 400
 
-    def delete_patient(self, patient_id):
-        try:
-            result = self.patient_db.delete_patient(patient_id)
-            if result:
-                return jsonify({"message": "Patient deleted successfully"}), 200
-            else:
-                return jsonify({"error": "Failed to delete patient"}), 400
-        except Exception as e:
-            return jsonify({"error": str(e)}), 400
 
+    
 
     def run(self):
-        """
-        Runs the Flask application.
-        """
         self.app.run()
 
 
