@@ -17,71 +17,104 @@ Validation should be done for all of the variables in config and db_config.
 There should be a method to commit that patient to the database using the api_controller.
 """
 
-import uuid
+import requests
+from config import DOCTORS, GENDERS, WARD_NUMBERS , ROOM_NUMBERS, API_CONTROLLER_URL
+import patient_db_config as pdb
+from uuid import uuid4
 from datetime import datetime
-from config import GENDERS, WARD_NUMBERS, ROOM_NUMBERS
-from patient_db_config import PATIENT_COLUMN_NAMES
+from patient_db import PatientDB
 
-class Patient:
-    def __init__(self, name, gender, age):
-        self.patient_id = str(uuid.uuid4())
-        self.patient_name = self._validate_name(name)
-        self.patient_gender = self._validate_gender(gender)
-        self.patient_age = self._validate_age(age)
-        self.patient_checkin = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        self.patient_checkout = None
-        self.patient_ward = None
-        self.patient_room = None
+class patient:
+        def __init__(self, name, gender, age):
+                self.patient_id = str(uuid4())  
+                self.patient_name = name
+                self.patient_age = age
+                self.patient_gender = gender
+                self.patient_checkin = datetime.now().strftime("%Y-%m-%d %H:%M:%S")  
+                self.patient_checkout = None
+                self.patient_ward = None
+                self.patient_room = None
 
-    def _validate_name(self, name):
-        if not isinstance(name, str):
-            raise ValueError("Name must be a string")
-        return name
+       
+        def get_name(self):
+            return self.patient_name
+            
+        def validate_name(self, name):
+            if not isinstance(name, str):
+                raise ValueError("invalid input")
+            return name
+        def get_id(self):
+            return self.patient_id
 
-    def _validate_gender(self, gender):
-        if gender not in GENDERS:
-            raise ValueError("Invalid gender")
-        return gender
+        def validate_gender(self, gender):
+            if gender not in GENDERS:
+                raise ValueError("Invalid gender.")
+            return gender
+        def validate_age(self, age):
+            if not isinstance(age, int) or age <= 0:
+                raise ValueError("invalid input")
+            return age
+        
+        def set_checkout_info(self, ward, room):
+            self.patient_checkout = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            self.patient_ward = self.validate_ward(ward)
+            self.patient_room = self.validate_room(room)
 
-    def _validate_age(self, age):
-        if not isinstance(age, int) or age <= 0:
-            raise ValueError("Age must be a positive integer")
-        return age
+      
+        
+        def validate_room(self, room):
+            ward = self.patient_ward
+            if ward is None:
+                raise ValueError("specify ward")
+            if str(room) not in ROOM_NUMBERS[ward]:
+                raise ValueError("invalid room number for ward")
+            return room
+            
+        def validate_ward(self, ward):
+            if ward not in WARD_NUMBERS:
+                raise ValueError("Invalid ward number.")
+            return ward
+        def set_ward(self, ward):
+            if(ward in WARD_NUMBERS):
+                self.patient_ward = ward
+                print("sucess")
+            else:
+                print("ward not found")
 
-    def _validate_ward(self, ward):
-        if ward not in WARD_NUMBERS:
-            raise ValueError("Invalid ward number")
-        return ward
 
-    def _validate_room(self, room):
-        all_rooms = []
-        for ward, rooms in ROOM_NUMBERS.items():
-            all_rooms = all_rooms + rooms
-        if str(room) not in all_rooms:
-            raise ValueError("Invalid room number")
-        return room
-    
-    def set_room(self, room):
-        self.patient_room = self._validate_room(room)
+        def set_room(self, room):
+            try:
+                if (self.validate_room(room)):
+                    self.patient_room = room
+                    print("sucess")
+            except Exception as e:
+                print(e)
+                
+        def get_ward(self):
+            return self.patient_ward
+        
+        def get_room(self):
+            return self.patient_room
 
-    def set_ward(self, ward):
-        self.patient_ward = self._validate_ward(ward)
+        def update_room_and_ward(self, ward, room):
+            if (ward in WARD_NUMBERS and room in ROOM_NUMBERS[ward]):
+                self.patient_ward = ward
+                self.patient_room = room
+                print("success")
+            else:
+                print("invalid input")
 
-    def update_room(self, room):
-        self.patient_room = self._validate_room(room)
+        def commit(self):
+            database = PatientDB()
+            existing_patient = database.fetch_patient_id_by_name(self.patient_name)
+            print(len(existing_patient))
+            if (len(existing_patient) == 0):
+                database.insert_patient(self.__dict__)
+            else:
+                print("already exists")
 
-    def update_ward(self, ward):
-        self.patient_ward = self._validate_ward(ward)
-
-    def get_id(self):
-        return self.patient_id
-    
-    def commit(self):
-        patient_data = {
-            "patient_name": self.patient_name,
-            "patient_gender": self.patient_gender,
-            "patient_age": self.patient_age,
-            "patient_checkin": self.patient_checkin,
-            "patient_ward": self.patient_ward,
-            "patient_room": self.patient_room
-        }
+                patient_id = existing_patient[0]['patient_id']
+                update_dict = self.__dict__
+                update_dict['patient_checkin'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                update_dict['patient_checkout'] = None
+                database.update_patient(patient_id, update_dict)
